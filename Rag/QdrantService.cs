@@ -49,8 +49,10 @@ public class QdrantService
                         {
 
                             ["file"] = chunk.FileName,
-                            ["content"] = chunk.Content
-
+                            ["content"] = chunk.Content,
+                            ["type"] = "code",
+                            ["length"] = chunk.Content.Length,
+                            ["timestamp"] = DateTime.UtcNow.ToString("O")
                         }
                     }
                 }
@@ -58,17 +60,41 @@ public class QdrantService
 
     }
 
-    public async Task<List<string>> SearchAsync(float[] vector)
+    public async Task<string> SearchAsync(float[] vector)
     {
         var results = await _client.SearchAsync(
                                 CollectionName,
                                 vector,
                                 limit: 5
                             );
+        var cont =  results.Select(x => x?.Payload["content"].StringValue ?? string.Empty);
 
-        return  results.Select(x =>
-                    x.Payload["content"]
-                    .StringValue
-                ).ToList();
+        return string.Join("\n\n", cont);
+
+        //return results.Select(x =>
+        //{
+        //    var p = x.Payload;
+        //    string Get(string key) => p.TryGetValue(key, out var v) ? v.StringValue : null;
+
+        //    return new RagSearchResult
+        //    {
+        //        Id = x.Id.Uuid,
+        //        FileName = Get("file"),
+        //        Content = new QdrantContentDto
+        //        {
+        //            Name = Get("content"),
+        //            Path = Get("path"),
+        //            Sha = Get("sha"),
+        //            Size = int.TryParse(Get("size"), out var size) ? size : (int?)null,
+        //            Url = Get("url"),
+        //            HtmlUrl = Get("html_url"),
+        //            GitUrl = Get("git_url")
+        //        },
+        //        Type = Get("type"),
+        //        Length = int.TryParse(Get("length"), out var length) ? length : 0,
+        //        Timestamp = DateTime.TryParse(Get("timestamp"), out var timestamp) ? timestamp : DateTime.UtcNow,
+        //        Score = x.Score
+        //    };
+        //}).ToList();
     }
 }

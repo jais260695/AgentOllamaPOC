@@ -10,11 +10,9 @@ public class EmbeddingService
     {
 
         _generator = new OllamaApiClient(
-                        new Uri(
-                            "http://localhost:11434"
-                        ),
-                        "nomic-embed-text"
-                    );
+                            new Uri("http://localhost:11434"),
+                            "nomic-embed-text"
+                         );
     }
 
     public async Task<float[]> GenerateAsync(string text)
