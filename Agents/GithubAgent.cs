@@ -1,160 +1,61 @@
-﻿using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-using ModelContextProtocol.Client;
-using System.Text.Json;
-
+﻿using AgentOllamaPOC.Execution;
+using AgentOllamaPOC.Models;
+using AgentOllamaPOC.Tools;
+using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 
 namespace AgentOllamaPOC.Agents;
 
-
-public class GithubAgent
+public class GithubAgent: BaseAgent
 {
-    private readonly AIAgent _agent;
+    private readonly McpToolAdapter _mcpAdapter;
+    private readonly IAgentExecutor _executor;
+    private readonly ILogger<GithubAgent> _logger;
 
-
-    public GithubAgent(
-        IChatClient chatClient,
-        McpClient mcpClient)
+    public override string Name => "GithubAgent";
+    public GithubAgent(McpToolAdapter mcpAdapter, IAgentExecutor executor, ILogger<GithubAgent> logger) : base()
     {
-
-
-        var mcpTools =
-            mcpClient
-            .ListToolsAsync()
-            .GetAwaiter()
-            .GetResult();
-
-
-
-        var aiTools = new List<AITool>();
-
-
-        foreach (var mcpTool in mcpTools)
-        {
-
-
-            var tool =
-                AIFunctionFactory.Create(
-                    async (object input) =>
-                    {
-                        Console.WriteLine(JsonSerializer.Serialize(input));
-                        var args = input switch
-                        {
-                            JsonElement je => JsonSerializer.Deserialize<Dictionary<string, object?>>(je.GetRawText())!,
-                            Dictionary<string, object?> dict => dict,
-                            _ => JsonSerializer.Deserialize<Dictionary<string, object?>>(
-                                    JsonSerializer.Serialize(input)
-                                )!
-                        };
-                        Console.WriteLine(JsonSerializer.Serialize(args));
-                        //  Tool: search_repositories
-                        //  var args =
-                        //    new Dictionary<string, object?>
-                        //    {
-                        //        { "query", "user:jais260695" }
-                        //    };
-
-                        var result =
-                                await mcpClient.CallToolAsync(
-                                    mcpTool.Name,
-                                    args
-                                );
-
-                        return "RAW_TOOL_OUTPUT:\n" +
-       System.Text.Json.JsonSerializer.Serialize(result.Content);
-                        //return result.Content
-                        //        .FirstOrDefault()
-                        //        ?.ToString()
-                        //        ?? "";
-
-
-                    },
-                    mcpTool.Name,
-                    mcpTool.Description
-                
-                );
-
-
-            aiTools.Add(tool);
-        }
-
-
-        _agent =
-            chatClient.AsAIAgent(
-
-                instructions:
-                """
-                You are a GitHub assistant.
-
-                GENERAL RULES:
-                - Always use GitHub tools when the user asks for GitHub data.
-                - Never answer from memory.
-                - Never invent repository information.
-                - Use tool results to generate the final answer.
-                - Respond only in English.
-
-                TOOL USAGE RULES:
-                - Use the exact parameter names defined by the tool.
-                - Never rename tool parameters.
-                - Never create alternative parameter names.
-
-                For list_commits tool:
-
-                The tool signature is:
-
-                list_commits(
-                    owner: string,
-                    repo: string,
-                    branch?: string
-                )
-
-                Parameter mapping:
-                - GitHub username/organization -> owner
-                - Repository name -> repo
-                - Branch name -> branch
-
-                Example:
-
-                User:
-                "fetch commits of CodeReviewAgent repository owned by jais260695 in main branch"
-
-                Correct tool arguments:
-
-                {
-                    "owner": "jais260695",
-                    "repo": "CodeReviewAgent",
-                    "branch": "main"
-                }
-
-                Incorrect examples:
-                {
-                    "repository_owner": "jais260695",
-                    "repository_name": "CodeReviewAgent",
-                    "branch_name": "main"
-                }
-
-                Never use repository_owner, repository_name, or branch_name.
-
-                """,
-
-                tools: aiTools
-            );
+        _mcpAdapter = mcpAdapter;
+        _executor = executor;
+        _logger = logger;
 
     }
 
 
-
-    public async Task<string> AskAsync(
-        string question)
+    public override async Task<ExecutionResult> AskAsync(AgentContext context, CancellationToken cancellationToken = default)
     {
+        var tools = await _mcpAdapter.CreateToolsAsync();
 
-        var response =
-            await _agent.RunAsync(
-                question
-                );
+        var result = await _executor.ExecuteAsync(
+                                context, 
+                                "GithubAgentPrompt.txt", 
+                                new ExecutionOptions
+                                {
+                                    Tools = tools
+                                }, 
+                                cancellationToken
+                      );
 
+        return result;
 
-        return response.ToString();
+    }
 
+    public override async IAsyncEnumerable<StreamingChunk> AskStreamingAsync(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var tools = await _mcpAdapter.CreateToolsAsync();
+
+        await foreach (var chunk in _executor.ExecuteStreamingAsync(
+                                            context, 
+                                            "GithubAgentPrompt.txt",
+                                            new ExecutionOptions
+                                            {
+                                                Tools = tools
+                                            },
+                                            cancellationToken
+                                      )
+        )
+        {
+            yield return chunk;
+        }
     }
 }
