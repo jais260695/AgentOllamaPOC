@@ -9,10 +9,7 @@ public class RagService
 
     private readonly QdrantService _qdrantService;
 
-    public RagService(
-        EmbeddingService embeddingService,
-        QdrantService qdrantService
-    )
+    public RagService(EmbeddingService embeddingService,QdrantService qdrantService)
     {
         _embeddingService = embeddingService;
         _qdrantService = qdrantService;
@@ -34,11 +31,11 @@ public class RagService
             var vector = await _embeddingService.GenerateAsync(text);
 
             var document = new DocumentChunk
-                           {
-                                FileName = fileName,
-                                Content = text,
-                                Vector = vector
-                           };
+                               {
+                                    FileName = fileName,
+                                    Content = text,
+                                    Vector = vector
+                               };
 
             await _qdrantService.InsertAsync(document);
         }
@@ -49,9 +46,7 @@ public class RagService
 
         var vector = await _embeddingService.GenerateAsync(question);
 
-        var results = await _qdrantService.SearchAsync(vector);
-
-        return string.Join("\n\n", results );
+        return await _qdrantService.SearchAsync(vector);
 
     }
 

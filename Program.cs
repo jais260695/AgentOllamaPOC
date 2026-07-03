@@ -1,36 +1,173 @@
-﻿using AgentOllamaPOC.Services;
+﻿using AgentOllamaPOC.Agents;
+using AgentOllamaPOC.Data;
+using AgentOllamaPOC.Data.Repositories;
+using AgentOllamaPOC.Execution;
+using AgentOllamaPOC.Infrastructure;
+using AgentOllamaPOC.Mcp;
+using AgentOllamaPOC.Memory;
+using AgentOllamaPOC.Memory.Interfaces;
+using AgentOllamaPOC.Memory.Redis;
+using AgentOllamaPOC.Rag;
+using AgentOllamaPOC.Services;
+using AgentOllamaPOC.Tools;
+using AgentOllamaPOC.Workers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using StackExchange.Redis;
 
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+var builder = Host.CreateApplicationBuilder(args);
 
-var service =
-    new OllamaAgentService();
+//Memory Servcies
 
-
-
-while (true)
+builder.Services.AddDbContext<AgentDbContext>(options =>
 {
+    options.UseNpgsql("Host=localhost;Port=5433;Database=agent-db;Username=agent;Password=agent");
+});
 
-    Console.Write("User: ");
+builder.Services.AddScoped<IConversationSummaryRepository, ConversationSummaryRepository>();
+
+builder.Services.AddSingleton(ConnectionMultiplexer.Connect("localhost:6379"));
+
+builder.Services.AddSingleton<IMemoryStore, RedisMemoryStore>();
+
+builder.Services.AddSingleton<MemoryService>();
+
+builder.Services.AddScoped<PromptBuilder>();
+
+builder.Services.AddSingleton<ConversationManager>();
+
+builder.Services.AddSingleton<PromptService>();
+
+builder.Services.AddScoped<ConversationSummaryService>();
+
+//Tools
+builder.Services.AddScoped<IAgentExecutor, AgentExecutor>();
+builder.Services.AddSingleton<RagToolService>();
+builder.Services.AddSingleton<McpToolAdapter>();
+
+// MCP Client
+builder.Services.AddSingleton(
+    sp =>
+    {
+        var client = new GithubMcpClient();
+        return client.ConnectAsync().GetAwaiter().GetResult();
+    }
+);
+
+// chat client
+
+builder.Services.AddSingleton<IChatClient>(
+    sp =>
+    {
+        var factory = new ChatClientFactory();
+        var client = factory.Create();
+        return new ResilientChatClient(
+       client
+   );
+    }
+);
+
+//builder.Services.AddSingleton<IChatClient>(sp =>
+//{
+
+//    var factory =
+//        new GeminiChatClientFactory();
 
 
-    var input =
-        Console.ReadLine();
+//    var client = factory.Create();
+//    return new ResilientChatClient(
+//       client
+//   );
+
+//});
+
+// Agents
+builder.Services.AddScoped<GithubAgent>();
+builder.Services.AddScoped<RagAgent>();
+
+builder.Services.AddScoped<RouterAgent>();
+
+builder.Services.AddScoped<AgentService>();
 
 
+// RAG
+builder.Services.AddSingleton<EmbeddingService>();
 
-    if (string.IsNullOrEmpty(input))
-        break;
+builder.Services.AddSingleton<QdrantService>();
 
+builder.Services.AddSingleton<RagService>();
 
+builder.Services.AddSingleton<GithubRepositoryIndexer>();
 
-    var response =
-        await service.AskAsync(input);
+// Background worker
+builder.Services.AddSingleton<RepositoryIndexWorker>();
 
+builder.Services.AddHostedService(
+    sp => sp.GetRequiredService<RepositoryIndexWorker>()
+);
 
+var app =builder.Build();
 
-    Console.WriteLine();
-    Console.WriteLine("AI:");
-    Console.WriteLine(response);
-    Console.WriteLine();
+// start background worker
+await app.StartAsync();
 
+var indexer = app.Services.GetRequiredService<RepositoryIndexWorker>();
+
+await indexer.Completion;
+
+// start chat loop
+
+using var scope = app.Services.CreateScope();
+var chat = scope.ServiceProvider.GetRequiredService<AgentService>();
+
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (s, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
+// One conversation = one session
+var conversationManager =
+    app.Services.GetRequiredService<ConversationManager>();
+
+var conversation = conversationManager.Create();
+
+Console.WriteLine($"Conversation: {conversation.Id}");
+Console.WriteLine("Type 'exit' to quit.");
+
+try
+{
+    while (true)
+    {
+
+        Console.Write("User: ");
+
+        var input = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(input))
+            continue;
+
+        if (input.Equals("exit", StringComparison.OrdinalIgnoreCase))
+            break;
+
+        //var answer = await chat.AskAsync(input!, cts.Token);
+
+        //Console.WriteLine($"Assistant: {answer}");
+
+        await foreach (var chunk in chat.AskStreamingAsync(input,cts.Token))
+        {
+            Console.Write(chunk);
+        }
+
+        Console.WriteLine();
+    }
 }
+catch (OperationCanceledException)
+{
+    Console.WriteLine("\nOperation cancelled.");
+}
+
+await app.StopAsync();

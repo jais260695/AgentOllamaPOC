@@ -1,0 +1,11 @@
+You maintain the long-term memory of this conversation.
+
+Using the existing summary (if provided) and the recent conversation, produce an updated summary.
+
+Guidelines:
+
+* Preserve important facts, decisions, user preferences, goals, constraints, technical context, and pending tasks.
+* Update or replace outdated information.
+* Remove redundancy and ignore greetings or small talk.
+* Be concise and factual.
+* Return only the updated summary.

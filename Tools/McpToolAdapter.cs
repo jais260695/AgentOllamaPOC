@@ -21,32 +21,11 @@ public class McpToolAdapter
     {
         var tools = await _client.ListToolsAsync();
 
-        //foreach (var t in tools)
-        //{
-        //    _logger.LogInformation("MCP Tool: {Tool} \n Schema: {Schema}", t.Name, t.JsonSchema);
-        //}
-
-        //Console.WriteLine("===== MCP TOOLS =====");
-
-        //foreach (var tool in tools)
-        //{
-        //    Console.WriteLine(tool.Name);
-
-        //    Console.WriteLine(tool.Description);
-
-        //    Console.WriteLine(
-        //        tool.JsonSchema
-        //    );
-        //}
-
-        //Console.WriteLine("====================");
-
         var aiTools = new List<AITool>();
 
         foreach (var mcpTool in tools)
         {
 
-            //_logger.LogInformation("Registering MCP Tool {Tool}", mcpTool.Name);
             var toolName = mcpTool.Name;
 
             var function = AIFunctionFactory.Create(
@@ -59,6 +38,10 @@ public class McpToolAdapter
                                     _logger.LogInformation(JsonSerializer.Serialize(arguments));
 
                                     var result = await _client.CallToolAsync(toolName, arguments);
+
+                                    var firstContent = result.Content.FirstOrDefault();
+                                    var contentType = firstContent?.GetType().Name;
+                                    _logger.LogInformation($"Content type: {contentType}");
 
                                     return result.Content.FirstOrDefault()?.ToString() ?? string.Empty;
                                 },
