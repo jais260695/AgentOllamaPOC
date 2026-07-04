@@ -41,7 +41,7 @@ public class GeminiChatClientFactory
         var chatClient =
             client
             .GetChatClient(
-                "gemini-2.5-flash-lite"
+                "gemini-2.5-flash"
             )
             .AsIChatClient();
 
