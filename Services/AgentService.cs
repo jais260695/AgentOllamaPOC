@@ -15,7 +15,7 @@ public class AgentService
     private readonly MemoryService _memoryService;
     private readonly ILogger<AgentService> _logger;
     private readonly ConversationSummaryService _conversationSummaryService;
-    private const int SummaryThreshold = 10;
+    private const int SummaryThreshold = 30;
 
     public AgentService( RouterAgent routerAgent, ConversationManager conversationManager, MemoryService memoryService, ILogger<AgentService> logger, ConversationSummaryService conversationSummaryService)
     {
@@ -58,9 +58,9 @@ public class AgentService
                 cancellationToken);
 
             // Generate summary if needed
-            var recentMessages = await _memoryService.GetHistoryAsync(conversation.Id, cancellationToken: cancellationToken);
+            var recentMessages = await _memoryService.GetMessageCountAsync(conversation.Id, cancellationToken: cancellationToken);
 
-            if (recentMessages.Count >= SummaryThreshold)
+            if (recentMessages >= SummaryThreshold)
             {
                 await _conversationSummaryService.SummarizeAsync(
                     context,
@@ -118,9 +118,9 @@ public class AgentService
             cancellationToken);
 
         // Generate summary if needed
-        var recentMessages = await _memoryService.GetHistoryAsync(conversation.Id, cancellationToken: cancellationToken);
+        var recentMessages = await _memoryService.GetMessageCountAsync(conversation.Id, cancellationToken: cancellationToken);
 
-        if (recentMessages.Count >= SummaryThreshold)
+        if (recentMessages >= SummaryThreshold)
         {
             await _conversationSummaryService.SummarizeAsync(context, cancellationToken);
         }

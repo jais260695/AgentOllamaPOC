@@ -30,20 +30,21 @@ public class ConversationSummaryService
 
         var existingSummary = await _repository.GetAsync(context.Conversation.Id, cancellationToken);
 
-        var recentMessages = await _memoryService.GetHistoryAsync(context.Conversation.Id, cancellationToken: cancellationToken);
+        var history = await _memoryService.GetHistoryAsync(context.Conversation.Id, 0, -11, cancellationToken: cancellationToken);
+
+        if (history.Count == 0)
+            return;
 
         var messages = new List<ChatMessage>();
 
         if (!string.IsNullOrWhiteSpace(existingSummary?.Summary))
         {
-            messages.Add(new ChatMessage(ChatRole.System, $"Existing Conversation Summary:\n{existingSummary.Summary}"));
+            messages.Add(new ChatMessage(ChatRole.System, existingSummary.Summary));
         }
 
-        messages.AddRange(recentMessages);
+        messages.AddRange(history);
 
-        messages.Add(
-            new(ChatRole.System, _promptService.GetPrompt("ConversationSummaryPrompt.txt"))
-        );
+        messages.Add(new(ChatRole.System, _promptService.GetPrompt("ConversationSummaryPrompt.txt")));
 
         var response = await _chatClient.GetResponseAsync(messages, cancellationToken: cancellationToken);
 
@@ -55,6 +56,10 @@ public class ConversationSummaryService
 
         summary.Summary = response.Text ?? string.Empty;
         summary.UpdatedAtUtc = DateTime.UtcNow;
+
+        var trimmed = await _memoryService.TrimHistoryAsync(context.Conversation.Id, 10, cancellationToken);
+
+        summary.LastProcessedMessageCount += trimmed;
 
         await _repository.SaveAsync(summary,cancellationToken);
     }

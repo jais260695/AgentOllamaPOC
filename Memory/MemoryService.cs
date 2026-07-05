@@ -22,13 +22,23 @@ public sealed class MemoryService
         return _store.AppendAsync(conversationId, new ChatMessage(ChatRole.Assistant, message), cancellationToken);
     }
 
-    public Task<IReadOnlyList<ChatMessage>> GetHistoryAsync(Guid conversationId, int limit = 10, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<ChatMessage>> GetHistoryAsync(Guid conversationId, int start = -10, int stop = -1, CancellationToken cancellationToken = default)
     {
-        return _store.GetHistoryAsync(conversationId, limit, cancellationToken);
+        return _store.GetHistoryAsync(conversationId, start, stop, cancellationToken);
     }
 
     public Task ClearAsync(Guid conversationId , CancellationToken cancellationToken = default)
     {
         return _store.ClearAsync(conversationId, cancellationToken);
+    }
+
+    public Task<int> TrimHistoryAsync(Guid conversationId, int keepLastMessages, CancellationToken cancellationToken = default)
+    {
+        return _store.TrimHistoryAsync(conversationId, keepLastMessages, cancellationToken);
+    }
+
+    public Task<int> GetMessageCountAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        return _store.GetMessageCountAsync(conversationId, cancellationToken);
     }
 }

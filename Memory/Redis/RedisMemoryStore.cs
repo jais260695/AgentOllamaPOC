@@ -31,14 +31,33 @@ public sealed class RedisMemoryStore : IMemoryStore
 
         var json = JsonSerializer.Serialize(stored);
 
-        await _db.ListRightPushAsync(GetKey(conversationId), json);
+        var tran = _db.CreateTransaction();
 
-        await _db.KeyExpireAsync(GetKey(conversationId), SessionTtl);
+        Task<long> pushTask = tran.ListRightPushAsync(GetKey(conversationId), json);
+
+        Task<bool> expireTask = tran.KeyExpireAsync(GetKey(conversationId), SessionTtl);
+
+        bool transactionCommitted = await tran.ExecuteAsync();
+
+        if (transactionCommitted)
+        {
+            // 3. It is now safe to read the results of the individual tasks
+            long totalLengthAfterPush = await pushTask;
+            bool expirySuccess = await expireTask;
+
+            Console.WriteLine($"Message pushed. Total items: {totalLengthAfterPush}");
+            Console.WriteLine($"TTL updated successfully: {expirySuccess}");
+        }
+        else
+        {
+            // The transaction failed (e.g., optimistic locking failed via redis 'WATCH')
+            Console.WriteLine("Transaction aborted by Redis server.");
+        }
     }
 
-    public async Task<IReadOnlyList<ChatMessage>> GetHistoryAsync(Guid conversationId, int limit = 10, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ChatMessage>> GetHistoryAsync(Guid conversationId, int start = -10, int stop = -1, CancellationToken cancellationToken = default)
     {
-        var values = await _db.ListRangeAsync(GetKey(conversationId), -limit, -1);
+        var values = await _db.ListRangeAsync(GetKey(conversationId), start, stop);
 
         return values.Select(v =>
                                 {
@@ -54,5 +73,28 @@ public sealed class RedisMemoryStore : IMemoryStore
     public async Task ClearAsync(Guid conversationId, CancellationToken cancellationToken = default)
     {
         await _db.KeyDeleteAsync(GetKey(conversationId));
+    }
+
+    public async Task<int> TrimHistoryAsync(Guid conversationId, int keepLastMessages, CancellationToken cancellationToken = default)
+    {
+        var key = GetKey(conversationId);
+
+        var length = await _db.ListLengthAsync(key);
+
+        if (length <= keepLastMessages)
+            return 0;
+
+        var trimmed = (int)(length - keepLastMessages);
+
+        await _db.ListTrimAsync( key, length - keepLastMessages,length - 1);
+
+        return trimmed;
+    }
+
+    public async Task<int> GetMessageCountAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        var key = GetKey(conversationId);
+
+        return (int)await _db.ListLengthAsync(key);
     }
 }
