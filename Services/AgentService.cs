@@ -50,11 +50,11 @@ public class AgentService
                 Question = question
             };
 
-            var answer = await _routerAgent.AskAsync(context, cancellationToken);
+            var answer = await _routerAgent.AskAsync<string>(context, cancellationToken);
 
             await _memoryService.AddAssistantMessageAsync(
                 conversation.Id,
-                answer.Text,
+                answer.Output,
                 cancellationToken);
 
             // Generate summary if needed
@@ -67,7 +67,7 @@ public class AgentService
                     cancellationToken);
             }
 
-            return answer.Text;
+            return answer.Output;
 
         }
         catch (Exception ex)
@@ -103,7 +103,7 @@ public class AgentService
         var builder = new StringBuilder();
 
         
-        await foreach (var chunk in _routerAgent.AskStreamingAsync(context, cancellationToken))
+        await foreach (var chunk in _routerAgent.AskStreamingAsync<string>(context, cancellationToken))
         {
             if (!string.IsNullOrEmpty(chunk.Text))
             {

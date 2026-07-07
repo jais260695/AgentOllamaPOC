@@ -54,7 +54,9 @@ public class ConversationSummaryService
                             CreatedAtUtc = DateTime.UtcNow
                         };
 
-        summary.Summary = response.Text ?? string.Empty;
+        var result = JsonResponseParser.Parse<SummaryResponse>(response.Text ?? string.Empty);
+
+        summary.Summary = result.Summary;
         summary.UpdatedAtUtc = DateTime.UtcNow;
 
         var trimmed = await _memoryService.TrimHistoryAsync(context.Conversation.Id, 10, cancellationToken);

@@ -22,11 +22,11 @@ public class GithubAgent: BaseAgent
     }
 
 
-    public override async Task<ExecutionResult> AskAsync(AgentContext context, CancellationToken cancellationToken = default)
+    public override async Task<ExecutionResult<T>> AskAsync<T>(AgentContext context, CancellationToken cancellationToken = default)
     {
         var tools = await _mcpAdapter.CreateToolsAsync();
 
-        var result = await _executor.ExecuteAsync(
+        var result = await _executor.ExecuteAsync<T>(
                                 context, 
                                 "GithubAgentPrompt.txt", 
                                 new ExecutionOptions
@@ -40,11 +40,11 @@ public class GithubAgent: BaseAgent
 
     }
 
-    public override async IAsyncEnumerable<StreamingChunk> AskStreamingAsync(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public override async IAsyncEnumerable<StreamingChunk<T>> AskStreamingAsync<T>(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var tools = await _mcpAdapter.CreateToolsAsync();
 
-        await foreach (var chunk in _executor.ExecuteStreamingAsync(
+        await foreach (var chunk in _executor.ExecuteStreamingAsync<T>(
                                             context, 
                                             "GithubAgentPrompt.txt",
                                             new ExecutionOptions
@@ -58,4 +58,5 @@ public class GithubAgent: BaseAgent
             yield return chunk;
         }
     }
+
 }

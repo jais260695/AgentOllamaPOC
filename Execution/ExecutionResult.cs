@@ -1,8 +1,8 @@
 ﻿namespace AgentOllamaPOC.Execution;
 
-public sealed class ExecutionResult
+public sealed class ExecutionResult<T>
 {
-    public string Text { get; init; } = string.Empty;
+    public required T Output { get; init; }
 
     public string? Model { get; init; }
 

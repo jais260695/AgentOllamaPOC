@@ -23,29 +23,29 @@ public class RouterAgent : BaseAgent
         _executor = executor;
     }
 
-    public override async Task<ExecutionResult> AskAsync(AgentContext context, CancellationToken cancellationToken = default)
+    public override async Task<ExecutionResult<T>> AskAsync<T>(AgentContext context, CancellationToken cancellationToken = default)
     {
-        var route = await GetRouteAsync(context, cancellationToken);
+        var routeDecision = await GetRouteAsync(context, cancellationToken);
 
-        return route switch
+        return routeDecision.Route switch
         {
-            "githubagent" => await _githubAgent.AskAsync(context, cancellationToken),
-            "ragagent" => await _ragAgent.AskAsync(context, cancellationToken),
-            _ => (await _executor.ExecuteAsync(context: context, cancellationToken: cancellationToken))
+            "githubagent" => await _githubAgent.AskAsync<T>(context, cancellationToken),
+            "ragagent" => await _ragAgent.AskAsync<T>(context, cancellationToken),
+            _ => (await _executor.ExecuteAsync<T>(context: context, cancellationToken: cancellationToken))
         };
     }
 
-    public override async IAsyncEnumerable<StreamingChunk> AskStreamingAsync(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public override async IAsyncEnumerable<StreamingChunk<T>> AskStreamingAsync<T>(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
 
 
-        var route = await GetRouteAsync(context, cancellationToken);
+        var routeDecision = await GetRouteAsync(context, cancellationToken);
 
-        IAsyncEnumerable<StreamingChunk> stream = route switch
+        IAsyncEnumerable<StreamingChunk<T>> stream = routeDecision.Route switch
         {
-            "githubagent" => _githubAgent.AskStreamingAsync(context, cancellationToken),
-            "ragagent" => _ragAgent.AskStreamingAsync(context, cancellationToken),
-            _ => _executor.ExecuteStreamingAsync(context: context, cancellationToken: cancellationToken)
+            "githubagent" => _githubAgent.AskStreamingAsync<T>(context, cancellationToken),
+            "ragagent" => _ragAgent.AskStreamingAsync<T>(context, cancellationToken),
+            _ => _executor.ExecuteStreamingAsync<T>(context: context, cancellationToken: cancellationToken)
         };
 
         await foreach (var chunk in stream.WithCancellation(cancellationToken))
@@ -55,19 +55,31 @@ public class RouterAgent : BaseAgent
 
     }
 
-    private async Task<string> GetRouteAsync( AgentContext context, CancellationToken cancellationToken)
+    private async Task<RouteDecision> GetRouteAsync( AgentContext context, CancellationToken cancellationToken)
     {
-        var result = await _executor.ExecuteAsync(
+        var result = await _executor.ExecuteAsync<RouteDecision>(
                             context: context with { IncludeHistory = false },
                             promptFile: "RouterAgentPrompt.txt",
                             cancellationToken: cancellationToken
                       );
 
-        var route = result.Text.Trim().ToLowerInvariant();
+        var routeDecision = result.Output;
 
-        _logger.LogInformation("ROUTER DECISION -> {Route}", route);
+        _logger.LogInformation("Router Decision => Route: {Route}, Confidence: {Confidence}, Reason: {Reason}",
+                                routeDecision.Route, routeDecision.Confidence, routeDecision.Reason);
 
-        return route;
+        routeDecision.Route = routeDecision.Route.ToLowerInvariant();
+
+        if (routeDecision.Route is not ("githubagent" or "ragagent" or "default"))
+        {
+            _logger.LogWarning( "Invalid route '{Route}'. Falling back to default.", routeDecision.Route);
+
+            routeDecision.Route = "default";
+        }
+
+
+
+        return routeDecision;
     }
 
 }

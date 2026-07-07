@@ -1,5 +1,6 @@
 ﻿using AgentOllamaPOC.Memory.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AgentOllamaPOC.Data;
 public class AgentDbContext : DbContext
@@ -10,6 +11,11 @@ public class AgentDbContext : DbContext
     }
 
     public DbSet<ConversationSummary> ConversationSummaries => Set<ConversationSummary>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.CommandExecuted));
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

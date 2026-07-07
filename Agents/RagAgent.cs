@@ -27,7 +27,7 @@ public class RagAgent : BaseAgent
 
 
 
-    public override async Task<ExecutionResult> AskAsync(AgentContext context, CancellationToken cancellationToken = default)
+    public override async Task<ExecutionResult<T>> AskAsync<T>(AgentContext context, CancellationToken cancellationToken = default)
     {
         var tool =
             AIFunctionFactory.Create(
@@ -36,7 +36,7 @@ public class RagAgent : BaseAgent
                 "Search repository indexed knowledge using the exact user question"
             );
 
-        var result = await _executor.ExecuteAsync(
+        var result = await _executor.ExecuteAsync<T>(
                                 context, 
                                 "RagAgentPrompt.txt", 
                                 new ExecutionOptions
@@ -50,7 +50,7 @@ public class RagAgent : BaseAgent
         return result;
     }
 
-    public override async IAsyncEnumerable<StreamingChunk> AskStreamingAsync(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public override async IAsyncEnumerable<StreamingChunk<T>> AskStreamingAsync<T>(AgentContext context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var tool =
             AIFunctionFactory.Create(
@@ -59,7 +59,7 @@ public class RagAgent : BaseAgent
                 "Search repository indexed knowledge using the exact user question"
             );
 
-        await foreach (var chunk in _executor.ExecuteStreamingAsync(
+        await foreach (var chunk in _executor.ExecuteStreamingAsync<T>(
                                             context,
                                             "RagAgentPrompt.txt",
                                             new ExecutionOptions

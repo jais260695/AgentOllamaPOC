@@ -24,7 +24,7 @@ public sealed class AgentExecutor : IAgentExecutor
         _logger = logger;
     }
 
-    public async Task<ExecutionResult> ExecuteAsync(
+    public async Task<ExecutionResult<T>> ExecuteAsync<T>(
         AgentContext context,
         string promptFile = "DefaultPrompt.txt",
         ExecutionOptions? options = null,
@@ -46,9 +46,9 @@ public sealed class AgentExecutor : IAgentExecutor
                                         cancellationToken
                                   );
 
-            return new ExecutionResult
+            return new ExecutionResult<T>
             {
-                Text = response.Text ?? string.Empty
+                Output = JsonResponseParser.Parse<T>(response.Text)
             };
         }
         catch (ClientResultException ex)
@@ -70,7 +70,7 @@ public sealed class AgentExecutor : IAgentExecutor
         }
     }
 
-    public async IAsyncEnumerable<StreamingChunk> ExecuteStreamingAsync(
+    public async IAsyncEnumerable<StreamingChunk<T>> ExecuteStreamingAsync<T>(
         AgentContext context,
         string promptFile = "DefaultPrompt.txt",
         ExecutionOptions? options = null,
@@ -96,7 +96,7 @@ public sealed class AgentExecutor : IAgentExecutor
                 {
                     builder.Append(text.Text);
 
-                    yield return new StreamingChunk
+                    yield return new StreamingChunk<T>
                     {
                         Text = text.Text
                     };
@@ -104,12 +104,12 @@ public sealed class AgentExecutor : IAgentExecutor
             }
         }
 
-        yield return new StreamingChunk
+        yield return new StreamingChunk<T>
         {
             IsCompleted = true,
-            FinalResult = new ExecutionResult
+            FinalResult = new ExecutionResult<T>
             {
-                Text = builder.ToString()
+                Output = JsonResponseParser.Parse<T>(builder.ToString())
             }
         };
     }

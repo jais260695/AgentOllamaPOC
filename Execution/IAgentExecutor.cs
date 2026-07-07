@@ -5,7 +5,7 @@ namespace AgentOllamaPOC.Execution;
 
 public interface IAgentExecutor
 {
-    Task<ExecutionResult> ExecuteAsync(AgentContext context, string promptFile = "DefaultPrompt.txt", ExecutionOptions? options = null, CancellationToken cancellationToken = default);
+    Task<ExecutionResult<T>> ExecuteAsync<T>(AgentContext context, string promptFile = "DefaultPrompt.txt", ExecutionOptions? options = null, CancellationToken cancellationToken = default);
 
-    IAsyncEnumerable<StreamingChunk> ExecuteStreamingAsync(AgentContext context, string promptFile = "DefaultPrompt.txt", ExecutionOptions? options = null,CancellationToken cancellationToken = default);
+    IAsyncEnumerable<StreamingChunk<T>> ExecuteStreamingAsync<T>(AgentContext context, string promptFile = "DefaultPrompt.txt", ExecutionOptions? options = null,CancellationToken cancellationToken = default);
 }

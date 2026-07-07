@@ -7,7 +7,7 @@ public interface IAgent
 {
     string Name { get; }
 
-    Task<ExecutionResult> AskAsync(AgentContext context,CancellationToken cancellationToken);
+    Task<ExecutionResult<T>> AskAsync<T>(AgentContext context, CancellationToken cancellationToken);
 
-    IAsyncEnumerable<StreamingChunk> AskStreamingAsync(AgentContext context, CancellationToken cancellationToken);
+    IAsyncEnumerable<StreamingChunk<T>> AskStreamingAsync<T>(AgentContext context, CancellationToken cancellationToken);
 }

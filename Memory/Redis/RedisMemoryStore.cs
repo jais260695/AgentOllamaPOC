@@ -45,6 +45,7 @@ public sealed class RedisMemoryStore : IMemoryStore
             long totalLengthAfterPush = await pushTask;
             bool expirySuccess = await expireTask;
 
+            Console.WriteLine("--------------------------");
             Console.WriteLine($"Message pushed. Total items: {totalLengthAfterPush}");
             Console.WriteLine($"TTL updated successfully: {expirySuccess}");
         }

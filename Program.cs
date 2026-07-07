@@ -138,6 +138,8 @@ var conversation = conversationManager.Create();
 Console.WriteLine($"Conversation: {conversation.Id}");
 Console.WriteLine("Type 'exit' to quit.");
 
+//conversation.Id = new Guid("d4f68827-d95a-475d-8799-2f566440cf1d");
+
 try
 {
     while (true)
