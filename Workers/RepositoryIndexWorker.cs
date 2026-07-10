@@ -35,8 +35,6 @@ public class RepositoryIndexWorker : BackgroundService
 
             // Create Qdrant collection first
 
-            await _ragService.InitializeAsync();
-
             _logger.LogInformation("RAG initialized");
 
 

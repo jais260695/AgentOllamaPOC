@@ -4,15 +4,15 @@ using AgentOllamaPOC.Models;
 
 namespace AgentOllamaPOC.Rag;
 
-public class QdrantService
+public class RAGQdrantService
 {
 
     private readonly QdrantClient _client;
     private const string CollectionName = "github_code";
 
-    public QdrantService()
+    public RAGQdrantService(QdrantClient client)
     {
-        _client = new QdrantClient("localhost",6334);
+        _client = client;
     }
 
     public async Task InitializeAsync()

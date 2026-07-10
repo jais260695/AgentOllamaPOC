@@ -3,6 +3,7 @@ using AgentOllamaPOC.Infrastructure;
 using AgentOllamaPOC.Memory.Models;
 using AgentOllamaPOC.Models;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace AgentOllamaPOC.Memory;
 
@@ -11,18 +12,21 @@ public class ConversationSummaryService
     private readonly IChatClient _chatClient;
     private readonly PromptService _promptService;
     private readonly IConversationSummaryRepository _repository;
-    private readonly MemoryService _memoryService;
+    private readonly MemoryService _memoryService; 
+    private readonly ILogger<ConversationSummaryService> _logger;
 
     public ConversationSummaryService(
         IChatClient chatClient,
         PromptService promptService,
         IConversationSummaryRepository repository,
-        MemoryService memoryService)
+        MemoryService memoryService,
+        ILogger<ConversationSummaryService> logger)
     {
         _repository = repository;
         _memoryService = memoryService;
         _chatClient = chatClient;
         _promptService = promptService;
+        _logger = logger;
     }
 
     public async Task SummarizeAsync(AgentContext context, CancellationToken cancellationToken = default)

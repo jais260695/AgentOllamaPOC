@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Qdrant.Client;
 using StackExchange.Redis;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -41,6 +42,19 @@ builder.Services.AddSingleton<ConversationManager>();
 builder.Services.AddSingleton<PromptService>();
 
 builder.Services.AddScoped<ConversationSummaryService>();
+
+builder.Services.AddSingleton<MemoryExtractionService>();
+
+builder.Services.AddSingleton<ISemanticMemoryRepository, SemanticMemoryRepository>();
+
+builder.Services.AddSingleton<SemanticMemoryService>();
+
+builder.Services.AddSingleton(_ =>
+{
+    return new QdrantClient(
+        "localhost",
+        6334);
+});
 
 //Tools
 builder.Services.AddScoped<IAgentExecutor, AgentExecutor>();
@@ -95,7 +109,7 @@ builder.Services.AddScoped<AgentService>();
 // RAG
 builder.Services.AddSingleton<EmbeddingService>();
 
-builder.Services.AddSingleton<QdrantService>();
+builder.Services.AddSingleton<RAGQdrantService>();
 
 builder.Services.AddSingleton<RagService>();
 
@@ -112,6 +126,9 @@ var app =builder.Build();
 
 // start background worker
 await app.StartAsync();
+
+await app.Services.GetRequiredService<ISemanticMemoryRepository>().InitializeAsync();
+await app.Services.GetRequiredService<RAGQdrantService>().InitializeAsync();
 
 var indexer = app.Services.GetRequiredService<RepositoryIndexWorker>();
 

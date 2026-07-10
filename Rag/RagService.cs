@@ -7,17 +7,12 @@ public class RagService
 
     private readonly EmbeddingService _embeddingService;
 
-    private readonly QdrantService _qdrantService;
+    private readonly RAGQdrantService _qdrantService;
 
-    public RagService(EmbeddingService embeddingService,QdrantService qdrantService)
+    public RagService(EmbeddingService embeddingService,RAGQdrantService qdrantService)
     {
         _embeddingService = embeddingService;
         _qdrantService = qdrantService;
-    }
-
-    public async Task InitializeAsync()
-    {
-        await _qdrantService.InitializeAsync();
     }
 
     public async Task IndexDocumentAsync(string fileName,string content)

@@ -15,15 +15,19 @@ public class AgentService
     private readonly MemoryService _memoryService;
     private readonly ILogger<AgentService> _logger;
     private readonly ConversationSummaryService _conversationSummaryService;
+
+    private readonly MemoryExtractionService _memoryExtractionService;
     private const int SummaryThreshold = 30;
 
-    public AgentService( RouterAgent routerAgent, ConversationManager conversationManager, MemoryService memoryService, ILogger<AgentService> logger, ConversationSummaryService conversationSummaryService)
+    public AgentService( RouterAgent routerAgent, ConversationManager conversationManager, MemoryService memoryService, 
+        ILogger<AgentService> logger, ConversationSummaryService conversationSummaryService, MemoryExtractionService memoryExtractionService)
     {
         _routerAgent = routerAgent;
         _conversationManager = conversationManager;
         _memoryService = memoryService;
         _logger = logger;
         _conversationSummaryService = conversationSummaryService;
+        _memoryExtractionService = memoryExtractionService;
     }
 
     public async Task<string> AskAsync(string question, CancellationToken cancellationToken = default)
@@ -67,6 +71,13 @@ public class AgentService
                     cancellationToken);
             }
 
+
+            var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+
+            foreach (var fact in facts)
+            {
+                _logger.LogInformation("Extracted Fact: {Fact}", fact);
+            }
             return answer.Output;
 
         }
@@ -123,6 +134,13 @@ public class AgentService
         if (recentMessages >= SummaryThreshold)
         {
             await _conversationSummaryService.SummarizeAsync(context, cancellationToken);
+        }
+
+        var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+
+        foreach (var fact in facts)
+        {
+            _logger.LogInformation("Extracted Fact: {Fact}", fact);
         }
 
     }
