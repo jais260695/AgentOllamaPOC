@@ -2,7 +2,7 @@
 
 public sealed class SemanticMemory
 {
-    public Guid Id { get; init; } = new Guid();
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     public Guid UserId { get; init; }
 

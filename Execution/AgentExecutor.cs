@@ -38,7 +38,7 @@ public sealed class AgentExecutor : IAgentExecutor
                                         cancellationToken
                                   );
 
-            var chatOptions = BuildChatOptions(options);
+            var chatOptions = BuildChatOptions<T>(options);
 
             var response = await _chatClient.GetResponseAsync(
                                         messages,
@@ -84,7 +84,7 @@ public sealed class AgentExecutor : IAgentExecutor
                         cancellationToken
                   );
 
-        var chatOptions = BuildChatOptions(options);
+        var chatOptions = BuildChatOptions<T>(options);
 
         var builder = new StringBuilder();
 
@@ -114,15 +114,16 @@ public sealed class AgentExecutor : IAgentExecutor
         };
     }
 
-    private static ChatOptions BuildChatOptions(ExecutionOptions? options)
+    private static ChatOptions BuildChatOptions<T>(ExecutionOptions? options)
     {
-        if (options is null) return new ChatOptions();
+        if (options is null) return new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema<T>() };
 
         return new ChatOptions
         {
             Tools = options.Tools?.ToList() ?? [],
             Temperature = options.Temperature,
-            MaxOutputTokens = options.MaxOutputTokens
+            MaxOutputTokens = options.MaxOutputTokens,
+            ResponseFormat = ChatResponseFormat.ForJsonSchema<T>()
         };
     }
 }

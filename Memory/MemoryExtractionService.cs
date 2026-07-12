@@ -20,7 +20,7 @@ public sealed class MemoryExtractionService
     {
         var result =
             await _executor.ExecuteAsync<MemoryExtractionResponse>(
-                context,
+                context with { IncludeSemanticMemory = false, IncludeHistory = false, IncludeConversationSummary = false },
                 "MemoryExtractionPrompt.txt",
                 null,
                 cancellationToken);

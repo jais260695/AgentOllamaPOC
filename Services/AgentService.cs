@@ -15,18 +15,19 @@ public class AgentService
     private readonly MemoryService _memoryService;
     private readonly ILogger<AgentService> _logger;
     private readonly ConversationSummaryService _conversationSummaryService;
-
+    private readonly SemanticMemoryService _semanticMemoryService;
     private readonly MemoryExtractionService _memoryExtractionService;
     private const int SummaryThreshold = 30;
 
-    public AgentService( RouterAgent routerAgent, ConversationManager conversationManager, MemoryService memoryService, 
-        ILogger<AgentService> logger, ConversationSummaryService conversationSummaryService, MemoryExtractionService memoryExtractionService)
+    public AgentService( RouterAgent routerAgent, ConversationManager conversationManager, MemoryService memoryService, ILogger<AgentService> logger, 
+        ConversationSummaryService conversationSummaryService, SemanticMemoryService semanticMemoryService, MemoryExtractionService memoryExtractionService)
     {
         _routerAgent = routerAgent;
         _conversationManager = conversationManager;
         _memoryService = memoryService;
         _logger = logger;
         _conversationSummaryService = conversationSummaryService;
+        _semanticMemoryService = semanticMemoryService;
         _memoryExtractionService = memoryExtractionService;
     }
 
@@ -73,6 +74,8 @@ public class AgentService
 
 
             var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+
+            await _semanticMemoryService.StoreAsync(conversation.Id, facts, cancellationToken);
 
             foreach (var fact in facts)
             {
@@ -137,6 +140,8 @@ public class AgentService
         }
 
         var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+
+        await _semanticMemoryService.StoreAsync(conversation.Id, facts, cancellationToken);
 
         foreach (var fact in facts)
         {

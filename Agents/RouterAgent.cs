@@ -29,8 +29,8 @@ public class RouterAgent : BaseAgent
 
         return routeDecision.Route switch
         {
-            "githubagent" => await _githubAgent.AskAsync<T>(context, cancellationToken),
-            "ragagent" => await _ragAgent.AskAsync<T>(context, cancellationToken),
+            RouteDecisionType.githubagent => await _githubAgent.AskAsync<T>(context, cancellationToken),
+            RouteDecisionType.ragagent => await _ragAgent.AskAsync<T>(context, cancellationToken),
             _ => (await _executor.ExecuteAsync<T>(context: context, cancellationToken: cancellationToken))
         };
     }
@@ -43,8 +43,8 @@ public class RouterAgent : BaseAgent
 
         IAsyncEnumerable<StreamingChunk<T>> stream = routeDecision.Route switch
         {
-            "githubagent" => _githubAgent.AskStreamingAsync<T>(context, cancellationToken),
-            "ragagent" => _ragAgent.AskStreamingAsync<T>(context, cancellationToken),
+            RouteDecisionType.githubagent => _githubAgent.AskStreamingAsync<T>(context, cancellationToken),
+            RouteDecisionType.ragagent => _ragAgent.AskStreamingAsync<T>(context, cancellationToken),
             _ => _executor.ExecuteStreamingAsync<T>(context: context, cancellationToken: cancellationToken)
         };
 
@@ -67,15 +67,6 @@ public class RouterAgent : BaseAgent
 
         _logger.LogInformation("Router Decision => Route: {Route}, Confidence: {Confidence}, Reason: {Reason}",
                                 routeDecision.Route, routeDecision.Confidence, routeDecision.Reason);
-
-        routeDecision.Route = routeDecision.Route.ToLowerInvariant();
-
-        if (routeDecision.Route is not ("githubagent" or "ragagent" or "default"))
-        {
-            _logger.LogWarning( "Invalid route '{Route}'. Falling back to default.", routeDecision.Route);
-
-            routeDecision.Route = "default";
-        }
 
 
 

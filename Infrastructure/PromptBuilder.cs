@@ -12,11 +12,15 @@ public sealed class PromptBuilder
 
     private readonly ConversationSummaryService _summaryService;
 
-    public PromptBuilder(MemoryService memoryService, PromptService promptService, ConversationSummaryService summaryService)
+    private readonly SemanticMemoryService _semanticMemoryService;
+
+    public PromptBuilder(MemoryService memoryService, PromptService promptService, ConversationSummaryService summaryService, 
+        SemanticMemoryService semanticMemoryService)
     {
         _memoryService = memoryService;
         _promptService = promptService;
         _summaryService = summaryService;
+        _semanticMemoryService = semanticMemoryService;
     }
 
     public async Task<List<ChatMessage>> BuildAsync( AgentContext context, string promptFile = "DefaultPrompt.txt" , CancellationToken cancellationToken = default , bool isHistoryRequired = true)
@@ -26,6 +30,16 @@ public sealed class PromptBuilder
         var prompt = _promptService.GetPrompt(promptFile);
 
         messages.Add(new ChatMessage(ChatRole.System, prompt));
+
+        if(context.IncludeSemanticMemory)
+        {
+            var memories = await _semanticMemoryService.SearchAsync(context.Conversation.Id, context.Question,top: 5,cancellationToken);
+
+            foreach (var fact in memories)
+            {
+                messages.Add(new ChatMessage(ChatRole.System, $"Semantic Fact: {fact}"));
+            }
+        }
 
         if (context.IncludeConversationSummary)
         {

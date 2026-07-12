@@ -1,4 +1,4 @@
-﻿using AgentOllamaPOC.Memory;
+﻿using AgentOllamaPOC.Memory.Interfaces;
 using AgentOllamaPOC.Memory.Models;
 using AgentOllamaPOC.Rag;
 using Microsoft.Extensions.Logging;
@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 public sealed class SemanticMemoryService
 {
     private readonly EmbeddingService _embeddingService;
-    private readonly SemanticMemoryRepository _repository;
+    private readonly ISemanticMemoryRepository _repository;
     private readonly ILogger<SemanticMemoryService> _logger;
 
     public SemanticMemoryService(
         EmbeddingService embeddingService,
-        SemanticMemoryRepository repository,
+        ISemanticMemoryRepository repository,
         ILogger<SemanticMemoryService> logger)
     {
         _embeddingService = embeddingService;

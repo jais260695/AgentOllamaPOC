@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AgentOllamaPOC.Infrastructure;
 
@@ -7,7 +8,8 @@ public static class JsonResponseParser
     private static readonly JsonSerializerOptions Options =
         new()
         {
-            PropertyNameCaseInsensitive = true
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
 
     public static T Parse<T>(string response)

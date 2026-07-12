@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.AI;
-
-namespace AgentOllamaPOC.Models;
+﻿namespace AgentOllamaPOC.Models;
 
 public sealed record AgentContext
 {
@@ -13,4 +11,6 @@ public sealed record AgentContext
     public bool IncludeCurrentQuestion { get; init; } = true;
 
     public bool IncludeConversationSummary { get; init; } = true;
+
+    public bool IncludeSemanticMemory { get; init; } = true;
 }
