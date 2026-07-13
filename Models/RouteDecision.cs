@@ -1,7 +1,9 @@
-﻿namespace AgentOllamaPOC.Models;
+﻿using System.Runtime.Serialization;
+
+namespace AgentOllamaPOC.Models;
 public sealed class RouteDecision
 {
-    public RouteDecisionType Route { get; set; } = RouteDecisionType.humanagent;
+    public RouteDecisionType Route { get; set; } = RouteDecisionType.Default;
 
     public float Confidence { get; set; }
 
@@ -10,7 +12,12 @@ public sealed class RouteDecision
 
 public enum RouteDecisionType
 {
-    githubagent,
-    ragagent,
-    humanagent,
+    [EnumMember(Value = "GithubAgent")]
+    GithubAgent,
+
+    [EnumMember(Value = "RagAgent")]
+    RagAgent,
+
+    [EnumMember(Value = "Default")]
+    Default
 }

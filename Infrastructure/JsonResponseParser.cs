@@ -9,7 +9,7 @@ public static class JsonResponseParser
         new()
         {
             PropertyNameCaseInsensitive = true,
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+            Converters = { new JsonStringEnumConverter() }
         };
 
     public static T Parse<T>(string response)

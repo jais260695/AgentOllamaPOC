@@ -29,8 +29,8 @@ public class RouterAgent : BaseAgent
 
         return routeDecision.Route switch
         {
-            RouteDecisionType.githubagent => await _githubAgent.AskAsync<T>(context, cancellationToken),
-            RouteDecisionType.ragagent => await _ragAgent.AskAsync<T>(context, cancellationToken),
+            RouteDecisionType.GithubAgent => await _githubAgent.AskAsync<T>(context, cancellationToken),
+            RouteDecisionType.RagAgent => await _ragAgent.AskAsync<T>(context, cancellationToken),
             _ => (await _executor.ExecuteAsync<T>(context: context, cancellationToken: cancellationToken))
         };
     }
@@ -43,8 +43,8 @@ public class RouterAgent : BaseAgent
 
         IAsyncEnumerable<StreamingChunk<T>> stream = routeDecision.Route switch
         {
-            RouteDecisionType.githubagent => _githubAgent.AskStreamingAsync<T>(context, cancellationToken),
-            RouteDecisionType.ragagent => _ragAgent.AskStreamingAsync<T>(context, cancellationToken),
+            RouteDecisionType.GithubAgent => _githubAgent.AskStreamingAsync<T>(context, cancellationToken),
+            RouteDecisionType.RagAgent => _ragAgent.AskStreamingAsync<T>(context, cancellationToken),
             _ => _executor.ExecuteStreamingAsync<T>(context: context, cancellationToken: cancellationToken)
         };
 
