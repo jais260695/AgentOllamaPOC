@@ -1,275 +1,394 @@
-# AgentOllamaPOC
+# AI Agent Framework for .NET
 
-## Overview
+A modular AI Agent Framework built with **.NET**, **Microsoft.Extensions.AI**, **Gemini/Ollama**, **Redis**, **PostgreSQL**, **Qdrant**, and **Model Context Protocol (MCP)**.
 
-AgentOllamaPOC is a .NET AI Agent application built using Ollama, Microsoft Agents AI, Model Context Protocol (MCP), and Retrieval Augmented Generation (RAG).
+The goal of this project is to demonstrate how to build production-ready AI agents with:
 
-The application demonstrates:
+* Multi-agent architecture
+* Long-term semantic memory
+* Conversation summarization
+* RAG (Retrieval Augmented Generation)
+* Structured outputs
+* Streaming responses
+* Tool calling via MCP
+* Provider-independent LLM execution
 
-- Local LLM execution using Ollama
-- GitHub automation using MCP tools
-- Repository understanding using RAG
-- Vector search using Qdrant
-- AI agent based tool calling
+---
+
+# Features
+
+## AI Agents
+
+* Router Agent
+* GitHub Agent
+* RAG Agent
+* Conversation Summary Agent
+* Memory Extraction Agent
+
+---
+
+## Memory System
+
+### Short-Term Memory
+
+* Redis
+* Sliding window conversation history
+* Recent message retrieval
+
+### Conversation Memory
+
+* PostgreSQL
+* Automatic summarization
+* Configurable summarization threshold
+
+### Long-Term Semantic Memory
+
+* Qdrant Vector Database
+* Embedding-based retrieval
+* Duplicate detection
+* Importance scoring
+* User-specific memories
+
+---
+
+## Retrieval Augmented Generation (RAG)
+
+* GitHub repository indexing
+* Embeddings using nomic-embed-text
+* Vector search using Qdrant
+* Context injection into prompts
+
+---
+
+## Agent Framework
+
+* Generic AgentExecutor<T>
+* Prompt Builder
+* Structured JSON Outputs
+* Streaming Responses
+* Retry Support
+* Provider Independent
+
+---
+
+## Tool Calling
+
+Supports Model Context Protocol (MCP)
+
+Example:
+
+* GitHub repositories
+* Issues
+* Pull Requests
+* Commits
+* Branches
 
 ---
 
 # Architecture
 
-The application follows this architecture:
-
-                User
-                  |
-                  v
-          OllamaAgentService
-                  |
-      +-----------+-----------+
-      |                       |
-      v                       v
-GithubAgent                RagService
-      |                       |
-      v                       v
-GitHub MCP              Qdrant Vector DB
-      |
-      v
- GitHub API
-
----
-
-# Components
-
-## OllamaAgentService
-
-Responsible for application orchestration.
-
-Responsibilities:
-
-- Creates Ollama chat client
-- Connects GitHub MCP client
-- Initializes RAG services
-- Sends user questions to the AI agent
-
+```
+                     User
+                       │
+                       ▼
+                AgentService
+                       │
+                RouterAgent
+             ┌─────────┴─────────┐
+             ▼                   ▼
+       GithubAgent          RagAgent
+             │                   │
+             └─────────┬─────────┘
+                       ▼
+                 AgentExecutor<T>
+                       │
+                 PromptBuilder
+        ┌──────────┼─────────────┐
+        ▼          ▼             ▼
+ Recent Redis   Summary DB   Semantic Memory
+        │          │             │
+        └──────────┴──────┬──────┘
+                           ▼
+                     ChatClient
+                  Gemini / Ollama
+```
 
 ---
 
-## GithubAgent
+# Memory Flow
 
-The AI agent responsible for GitHub operations.
+```
+Conversation
 
-Capabilities:
+↓
 
-- Uses MCP tools
-- Searches repositories
-- Reads files
-- Retrieves commits
-- Works with GitHub issues and pull requests
+Redis
 
-The agent does not guess repository information.
+↓
 
-It always uses available GitHub tools.
+Conversation Summary
 
----
+↓
 
-## GitHub MCP Client
+Memory Extraction
 
-The application connects with GitHub using Model Context Protocol.
+↓
 
-The MCP server provides tools such as:
+Semantic Memory
 
+↓
 
-search_repositories
-get_file_contents
-search_code
-list_commits
-create_issue
-create_pull_request
+Qdrant
 
+↓
 
-Authentication is handled using:
+Semantic Search
 
+↓
 
-GITHUB_PERSONAL_ACCESS_TOKEN
+Prompt Builder
 
+↓
 
-environment variable.
+LLM
+```
 
 ---
 
-# RAG Implementation
+# Technology Stack
 
-AgentOllamaPOC uses Retrieval Augmented Generation.
+## Backend
 
-Pipeline:
+* .NET 10
+* C#
+* Microsoft.Extensions.AI
 
+## AI Models
 
-Document
-|
-v
-Text Chunking
-|
-v
-Ollama Embedding Model
-|
-v
-Vector Generation
-|
-v
-Qdrant Vector Database
-|
-v
-Similarity Search
-|
-v
-Ollama LLM Response
+* Gemini
+* Ollama
 
+## Embeddings
 
----
+* nomic-embed-text
 
-# Embedding Model
+## Memory
 
-The application uses Ollama embedding model:
+* Redis
+* PostgreSQL
+* Qdrant
 
+## Tool Calling
 
-nomic-embed-text
+* Model Context Protocol (MCP)
 
+## Logging
 
-The model converts text into vector embeddings.
-
-Vector size:
-
-
-768 dimensions
-
+* Microsoft.Extensions.Logging
 
 ---
 
-# Vector Database
+# Project Structure
 
-Qdrant is used for storing embeddings.
+```
+src/
 
-Collection:
-
-
-github_code
-
-
-Each stored document contains:
-
-
-FileName
-Content
-Embedding Vector
-
+├── Agents/
+│   ├── RouterAgent
+│   ├── GithubAgent
+│   └── RagAgent
+│
+├── Execution/
+│   ├── AgentExecutor
+│   ├── ExecutionResult
+│   └── PromptBuilder
+│
+├── Memory/
+│   ├── Redis
+│   ├── PostgreSQL
+│   ├── SemanticMemory
+│   └── MemoryExtraction
+│
+├── Rag/
+│
+├── Prompts/
+│
+├── Models/
+│
+└── Tools/
+```
 
 ---
 
-# Example Indexed Document
+# AI Execution Pipeline
+
+```
+User
+
+↓
+
+AgentService
+
+↓
+
+Router Agent
+
+↓
+
+AgentExecutor<T>
+
+↓
+
+Prompt Builder
+
+↓
+
+Chat Client
+
+↓
+
+LLM
+
+↓
+
+Structured Output
+
+↓
+
+Streaming Response
+```
+
+---
+
+# Semantic Memory
+
+The framework automatically extracts long-term memories from conversations.
 
 Example:
 
+Conversation:
 
-README.md
+```
+User:
+I prefer PostgreSQL over MongoDB.
 
-Content:
-Authentication uses GitHub Personal Access Token.
+User:
+I'm building an AI framework using .NET.
+```
 
-The MCP client connects with GitHub APIs.
+Extracted memories:
 
+```
+User prefers PostgreSQL.
 
-The content is converted into embeddings and stored in Qdrant.
+User is building an AI framework using .NET.
+```
 
----
+These memories are:
 
-# Example Questions
-
-## RAG Questions
-
-Ask:
-
-
-Explain authentication flow
-
-
-Expected:
-
-The answer should come from README/document context.
+* Embedded
+* Stored in Qdrant
+* Retrieved using semantic similarity
+* Added back into future prompts
 
 ---
 
-Ask:
+# Conversation Summary
 
+Older messages are automatically summarized once the conversation reaches a configurable threshold.
 
-Explain the RAG pipeline
+Prompt Builder combines:
 
+* Relevant semantic memories
+* Conversation summary
+* Recent messages
 
-Expected:
-
-The AI explains:
-
-- Document chunking
-- Embedding creation
-- Qdrant storage
-- Similarity search
-- Final LLM response
-
+This minimizes token usage while preserving context.
 
 ---
 
-## GitHub MCP Questions
+# Structured Outputs
 
-Ask:
+Agents return strongly typed responses instead of plain text.
 
+Example:
 
-search repositories for user user:jais260695 using github tool and english language
+```csharp
+ExecutionResult<RouteDecision>
 
+ExecutionResult<SummaryResponse>
 
-The agent uses:
+ExecutionResult<MemoryExtractionResponse>
 
-
-search_repositories
-
-
-tool.
-
----
-
-Ask:
-
-
-Fetch commits of CodeReviewAgent repository owned by jais260695 in main branch
-
-
-The agent uses:
-
-
-list_commits
-
-
-tool.
+ExecutionResult<string>
+```
 
 ---
 
-# Technologies
+# Streaming
 
-- .NET
-- Microsoft.Agents.AI
-- Microsoft.Extensions.AI
-- Ollama
-- Qwen2.5
-- nomic-embed-text
-- Model Context Protocol
-- GitHub MCP Server
-- Qdrant
+Supports token streaming using `IAsyncEnumerable<ChatResponseUpdate>`.
 
 ---
 
-# Future Enhancements
+# Current Capabilities
 
-Possible improvements:
+* Multi-Agent Routing
+* Semantic Memory
+* Conversation Summaries
+* Redis Short-Term Memory
+* PostgreSQL Summaries
+* Qdrant Vector Search
+* GitHub RAG
+* MCP Tool Calling
+* Structured Outputs
+* Streaming
+* Generic Agent Executor
 
-- Index complete GitHub repositories automatically
-- Store repository files in Qdrant
-- Add code-level semantic search
-- Add multi-agent architecture
-- Add persistent chat memory
-- Add GitHub repository analyzer agent
+---
+
+# Future Roadmap
+
+## Memory
+
+* Memory decay
+* Memory consolidation
+* Memory update
+* Memory deletion
+* User profile memory
+
+## Planning
+
+* Planner Agent
+* Reflection Agent
+* Critic Agent
+* Multi-step execution
+
+## Multi-Agent
+
+* Planner
+* Research Agent
+* Coding Agent
+* Reviewer Agent
+
+## Observability
+
+* OpenTelemetry
+* Prometheus
+* Grafana
+* Distributed Tracing
+* AI Cost Tracking
+
+## Reliability
+
+* Retry policies
+* Circuit breakers
+* Rate limiting
+* Model fallback
+* Provider routing
+
+---
+
+# Goals
+
+This project aims to demonstrate production-ready AI engineering patterns using modern .NET technologies while remaining provider independent and easily extensible.
