@@ -2,6 +2,8 @@
 using AgentOllamaPOC.Models;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace AgentOllamaPOC.Agents;
 

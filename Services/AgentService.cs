@@ -1,8 +1,10 @@
 ﻿using AgentOllamaPOC.Agents;
 using AgentOllamaPOC.Execution;
+using AgentOllamaPOC.Infrastructure;
 using AgentOllamaPOC.Memory;
 using AgentOllamaPOC.Models;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -33,16 +35,24 @@ public class AgentService
 
     public async Task<string> AskAsync(string question, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(question))
+        {
+            return "Please enter a valid question.";
+        }
+
+        const string agentName = "AgentService";
+
+        var stopwatch = Stopwatch.StartNew();
+        var success = false;
+
+        using var activity = AgentTelemetry.StartActivity("agent.request", agentName);
+
         try
         {
 
-            if (string.IsNullOrWhiteSpace(question))
-            {
-                return "Please enter a valid question.";
-            }
-
-
             var conversation = _conversationManager.Current;
+
+            activity?.SetTag("conversation.id", conversation.Id.ToString());
 
             await _memoryService.AddUserMessageAsync(
                conversation.Id,
@@ -67,29 +77,47 @@ public class AgentService
 
             if (recentMessages >= SummaryThreshold)
             {
+                using var summaryActivity = AgentTelemetry.StartActivity("memory.summarize");
                 await _conversationSummaryService.SummarizeAsync(
                     context,
                     cancellationToken);
             }
 
 
-            var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
-
-            await _semanticMemoryService.StoreAsync(conversation.Id, facts, cancellationToken);
-
-            foreach (var fact in facts)
+            using (AgentTelemetry.StartActivity("memory.extract"))
             {
-                _logger.LogInformation("Extracted Fact: {Fact}", fact);
+                var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+
+                await _semanticMemoryService.StoreAsync(
+                    conversation.Id, facts, cancellationToken);
+
+                _logger.LogInformation("Extracted {FactCount} semantic memories", facts.Count);
             }
+
+            success = true;
             return answer.Output;
 
         }
+        catch (OperationCanceledException)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, "Request cancelled");
+            throw;
+        }
         catch (Exception ex)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Agent request failed");
 
-            return
-                $"Agent execution failed: {ex.Message}";
+            return $"Agent execution failed: {ex.Message}";
+        }
+        finally
+        {
+            stopwatch.Stop();
 
+            AgentTelemetry.RecordAgentExecution(
+                agentName,
+                stopwatch.Elapsed.TotalMilliseconds,
+                success);
         }
     }
 
