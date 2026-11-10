@@ -7,6 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentOllamaPOC", "AgentOlla
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C535200E-9870-4A62-966F-25D544006A3C}"
 	ProjectSection(SolutionItems) = preProject
+		docker-compose.observability.yml = docker-compose.observability.yml
 		README.md = README.md
 	EndProjectSection
 EndProject

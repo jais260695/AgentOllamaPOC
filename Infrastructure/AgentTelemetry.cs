@@ -32,6 +32,15 @@ public static class AgentTelemetry
     private static readonly Histogram<double> ToolDuration =
         Meter.CreateHistogram<double>("agent.tool.duration", "ms");
 
+    private static readonly Counter<long> InputTokens =
+        Meter.CreateCounter<long>("llm.tokens.input", "tokens");
+
+    private static readonly Counter<long> OutputTokens =
+        Meter.CreateCounter<long>("llm.tokens.output", "tokens");
+
+    private static readonly Counter<long> TotalTokens =
+        Meter.CreateCounter<long>("llm.tokens.total", "tokens");
+
     public static Activity? StartActivity(string name, string? agentName = null)
     {
         var activity = ActivitySource.StartActivity(name);
@@ -79,5 +88,23 @@ public static class AgentTelemetry
 
         ToolCalls.Add(1, tags);
         ToolDuration.Record(durationMs, tags);
+    }
+
+    public static void RecordTokenUsage(string provider, string model, long? inputTokens, long? outputTokens, long? totalTokens)
+    {
+        var tags = new TagList
+        {
+            { "llm.provider", provider },
+            { "llm.model", model }
+        };
+
+        if (inputTokens.HasValue)
+            InputTokens.Add(inputTokens.Value, tags);
+
+        if (outputTokens.HasValue)
+            OutputTokens.Add(outputTokens.Value, tags);
+
+        if (totalTokens.HasValue)
+            TotalTokens.Add(totalTokens.Value, tags);
     }
 }
