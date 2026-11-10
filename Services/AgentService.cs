@@ -129,51 +129,82 @@ public class AgentService
              yield break;
         }
 
-        var conversation = _conversationManager.Current;
+        const string agentName = "AgentService";
 
-        await _memoryService.AddUserMessageAsync(
-               conversation.Id,
-               question,
-               cancellationToken);
+        var stopwatch = Stopwatch.StartNew();
+        var success = false;
 
-        var context = new AgentContext
+        using var activity = AgentTelemetry.StartActivity("agent.request.stream", agentName);
+
+        try
         {
-            Conversation = conversation,
-            Question = question
-        };
 
-        var builder = new StringBuilder();
+            var conversation = _conversationManager.Current;
 
-        
-        await foreach (var chunk in _routerAgent.AskStreamingAsync<string>(context, cancellationToken))
-        {
-            if (!string.IsNullOrEmpty(chunk.Text))
+            activity?.SetTag("conversation.id", conversation.Id.ToString());
+            activity?.SetTag("agent.streaming", true);
+
+            await _memoryService.AddUserMessageAsync(
+                   conversation.Id,
+                   question,
+                   cancellationToken);
+
+            var context = new AgentContext
             {
-                builder.Append(chunk.Text);
-                yield return chunk.Text;
+                Conversation = conversation,
+                Question = question
+            };
+
+            var builder = new StringBuilder();
+
+
+            await foreach (var chunk in _routerAgent.AskStreamingAsync<string>(context, cancellationToken).WithCancellation(cancellationToken))
+            {
+                if (!string.IsNullOrEmpty(chunk.Text))
+                {
+                    builder.Append(chunk.Text);
+                    yield return chunk.Text;
+                }
             }
+
+            await _memoryService.AddAssistantMessageAsync(
+                conversation.Id,
+                builder.ToString(),
+                cancellationToken);
+
+            // Generate summary if needed
+            var recentMessages = await _memoryService.GetMessageCountAsync(conversation.Id, cancellationToken: cancellationToken);
+
+            if (recentMessages >= SummaryThreshold)
+            {
+                using var summaryActivity = AgentTelemetry.StartActivity("memory.summarize");
+                await _conversationSummaryService.SummarizeAsync(context, cancellationToken);
+            }
+
+            using (AgentTelemetry.StartActivity("memory.extract"))
+            {
+
+                var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+
+                await _semanticMemoryService.StoreAsync(conversation.Id, facts, cancellationToken);
+
+                _logger.LogInformation("Extracted {FactCount} semantic memories", facts.Count);
+            }
+
+            success = true;
+
         }
-
-        await _memoryService.AddAssistantMessageAsync(
-            conversation.Id,
-            builder.ToString(),
-            cancellationToken);
-
-        // Generate summary if needed
-        var recentMessages = await _memoryService.GetMessageCountAsync(conversation.Id, cancellationToken: cancellationToken);
-
-        if (recentMessages >= SummaryThreshold)
+        finally
         {
-            await _conversationSummaryService.SummarizeAsync(context, cancellationToken);
-        }
+            stopwatch.Stop();
 
-        var facts = await _memoryExtractionService.ExtractAsync(context, cancellationToken);
+            if (!success && cancellationToken.IsCancellationRequested)
+                activity?.SetStatus(ActivityStatusCode.Error, "Request cancelled");
 
-        await _semanticMemoryService.StoreAsync(conversation.Id, facts, cancellationToken);
-
-        foreach (var fact in facts)
-        {
-            _logger.LogInformation("Extracted Fact: {Fact}", fact);
+            AgentTelemetry.RecordAgentExecution(
+                agentName,
+                stopwatch.Elapsed.TotalMilliseconds,
+                success);
         }
 
     }

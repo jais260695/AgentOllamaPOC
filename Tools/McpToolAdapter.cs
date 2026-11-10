@@ -1,6 +1,9 @@
-﻿using Microsoft.Extensions.AI;
+﻿using AgentOllamaPOC.Infrastructure;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace AgentOllamaPOC.Tools;
@@ -9,7 +12,7 @@ public class McpToolAdapter
 {
     private readonly McpClient _client;
 
-    private ILogger<McpToolAdapter> _logger;
+    private readonly ILogger<McpToolAdapter> _logger;
 
     public McpToolAdapter(McpClient client, ILogger<McpToolAdapter> logger)
     {
@@ -31,19 +34,85 @@ public class McpToolAdapter
             var function = AIFunctionFactory.Create(
                                 async (JsonElement jsonArguments) => {
 
-                                    _logger.LogInformation($"TOOL EXECUTED: {toolName}");
+                                    using var activity = AgentTelemetry.StartActivity("tool.execute");
+                                    
+                                    activity?.SetTag("tool.name", toolName);
+                                    activity?.SetTag("tool.type", "mcp");
 
-                                    var arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(jsonArguments.GetRawText())?? new();
+                                    var stopwatch = Stopwatch.StartNew();
+                                    var success = false;
 
-                                    _logger.LogInformation(JsonSerializer.Serialize(arguments));
+                                    try
+                                    {
 
-                                    var result = await _client.CallToolAsync(toolName, arguments);
+                                        _logger.LogInformation($"TOOL EXECUTED: {toolName}");
 
-                                    var firstContent = result.Content.FirstOrDefault();
-                                    var contentType = firstContent?.GetType().Name;
-                                    _logger.LogInformation($"Content type: {contentType}");
+                                        var rawArguments = jsonArguments.GetRawText();
 
-                                    return result.Content.FirstOrDefault()?.ToString() ?? string.Empty;
+                                        Dictionary<string, object?> arguments;
+
+                                        if (jsonArguments.ValueKind != JsonValueKind.Object)
+                                        {
+                                            var argumentsJson = jsonArguments.ValueKind == JsonValueKind.String ? jsonArguments.GetString()! : jsonArguments.GetRawText();
+
+                                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(argumentsJson) ?? new();
+                                            //throw new InvalidOperationException(
+                                            //    $"Expected JSON object for MCP tool '{toolName}', " +
+                                            //    $"but received {jsonArguments.ValueKind}. " +
+                                            //    $"Arguments: {rawArguments}");
+                                        }
+                                        else
+                                        {
+                                            arguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(rawArguments) ?? new();
+                                        }
+
+
+
+                                        _logger.LogInformation(JsonSerializer.Serialize(arguments));
+
+                                        var result = await _client.CallToolAsync(toolName, arguments);
+
+                                        var firstContent = result.Content.FirstOrDefault();
+                                        var contentType = firstContent?.GetType().Name;
+
+                                        activity?.SetTag( "tool.response.content_type", contentType);
+
+                                        _logger.LogInformation("MCP tool completed: {ToolName}", toolName);
+
+                                        success = true;
+
+
+                                        var toolOutput = firstContent switch
+                                        {
+                                            TextContentBlock textContent => textContent.Text,
+                                            _ => firstContent?.ToString() ?? string.Empty
+                                        };
+
+                                        _logger.LogInformation(
+                                            "MCP output length: {Length}",
+                                            toolOutput.Length);
+
+                                        return toolOutput;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        activity?.SetStatus( ActivityStatusCode.Error, "MCP tool execution failed");
+
+                                        _logger.LogError(ex,"MCP tool execution failed: {ToolName}",toolName);
+
+                                        throw;
+                                    }
+                                    finally
+                                    {
+                                        stopwatch.Stop();
+
+                                        if (!success)
+                                        {
+                                            activity?.SetStatus(ActivityStatusCode.Error,"MCP tool execution failed");
+                                        }
+
+                                        AgentTelemetry.RecordToolCall(toolName,stopwatch.Elapsed.TotalMilliseconds,success);
+                                    }
                                 },
                                 mcpTool.Name,
                                 $"""

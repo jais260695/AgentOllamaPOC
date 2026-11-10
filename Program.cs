@@ -1,4 +1,5 @@
-﻿using AgentOllamaPOC.Agents;
+﻿using AgentOllamaPOC;
+using AgentOllamaPOC.Agents;
 using AgentOllamaPOC.Data;
 using AgentOllamaPOC.Data.Repositories;
 using AgentOllamaPOC.Execution;
@@ -16,12 +17,14 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Qdrant.Client;
 using StackExchange.Redis;
-using OpenTelemetry.Logs;
+using System.ClientModel;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -37,14 +40,22 @@ builder.Services.AddOpenTelemetry()
         tracing
             .AddSource("AgentOllamaPOC")
             .AddHttpClientInstrumentation()
-            .AddOtlpExporter();
+            .AddOtlpExporter(options =>
+            {
+                options.Protocol = OtlpExportProtocol.Grpc;
+                options.Endpoint = new Uri("http://localhost:4317");
+            });
     })
     .WithMetrics(metrics =>
     {
         metrics
             .AddMeter("AgentOllamaPOC")
             .AddRuntimeInstrumentation()
-            .AddOtlpExporter();
+            .AddOtlpExporter(options =>
+            {
+                options.Protocol = OtlpExportProtocol.Grpc;
+                options.Endpoint = new Uri("http://localhost:4317");
+            });
     });
 
 builder.Logging.AddOpenTelemetry(logging =>
@@ -53,8 +64,17 @@ builder.Logging.AddOpenTelemetry(logging =>
     logging.IncludeScopes = true;
     logging.ParseStateValues = true;
 
-    logging.AddOtlpExporter();
+    logging.AddOtlpExporter(options =>
+    {
+        options.Protocol = OtlpExportProtocol.Grpc;
+        options.Endpoint = new Uri("http://localhost:4317");
+    });
 });
+
+//Configuration
+
+builder.Services.Configure<LlmProviderOptions>(
+    builder.Configuration.GetSection(LlmProviderOptions.SectionName));
 
 //Memory Servcies
 
@@ -108,30 +128,30 @@ builder.Services.AddSingleton(
 
 // chat client
 
-builder.Services.AddSingleton<IChatClient>(
-    sp =>
-    {
-        var factory = new ChatClientFactory();
-        var client = factory.Create();
-        return new ResilientChatClient(
-       client
-   );
-    }
-);
-
-//builder.Services.AddSingleton<IChatClient>(sp =>
-//{
-
-//    var factory =
-//        new GeminiChatClientFactory();
-
-
-//    var client = factory.Create();
-//    return new ResilientChatClient(
+//builder.Services.AddSingleton<IChatClient>(
+//    sp =>
+//    {
+//        var factory = new ChatClientFactory();
+//        var client = factory.Create();
+//        return new ResilientChatClient(
 //       client
 //   );
+//    }
+//);
 
-//});
+builder.Services.AddSingleton<IChatClient>(sp =>
+{
+
+    var factory =
+        new GeminiChatClientFactory();
+
+
+    var client = factory.Create();
+    return new ResilientChatClient(
+       client
+   );
+
+});
 
 // Agents
 builder.Services.AddScoped<GithubAgent>();
@@ -215,7 +235,7 @@ try
         await foreach (var chunk in chat.AskStreamingAsync(input,cts.Token))
         {
             Console.Write(chunk);
-        }
+        }   
 
         Console.WriteLine();
     }
@@ -223,6 +243,15 @@ try
 catch (OperationCanceledException)
 {
     Console.WriteLine("\nOperation cancelled.");
+}
+catch (ClientResultException ex)
+{
+    var response = ex.GetRawResponse();
+
+    Console.WriteLine($"HTTP Status: {ex.Status}");
+    Console.WriteLine($"Response body: {response?.Content}");
+
+    throw;
 }
 
 await app.StopAsync();
