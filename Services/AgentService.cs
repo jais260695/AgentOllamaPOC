@@ -1,5 +1,6 @@
 ﻿using AgentOllamaPOC.Agents;
 using AgentOllamaPOC.Execution;
+using AgentOllamaPOC.Guardrails.Abstractions;
 using AgentOllamaPOC.Infrastructure;
 using AgentOllamaPOC.Memory;
 using AgentOllamaPOC.Models;
@@ -7,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using AgentOllamaPOC.Guardrails.Abstractions;
+using AgentOllamaPOC.Guardrails.Models;
 
 namespace AgentOllamaPOC.Services;
 
@@ -19,10 +22,12 @@ public class AgentService
     private readonly ConversationSummaryService _conversationSummaryService;
     private readonly SemanticMemoryService _semanticMemoryService;
     private readonly MemoryExtractionService _memoryExtractionService;
+    private readonly IGuardrailPipeline _guardrailPipeline;
     private const int SummaryThreshold = 30;
 
     public AgentService( RouterAgent routerAgent, ConversationManager conversationManager, MemoryService memoryService, ILogger<AgentService> logger, 
-        ConversationSummaryService conversationSummaryService, SemanticMemoryService semanticMemoryService, MemoryExtractionService memoryExtractionService)
+        ConversationSummaryService conversationSummaryService, SemanticMemoryService semanticMemoryService, MemoryExtractionService memoryExtractionService,
+        IGuardrailPipeline guardrailPipeline)
     {
         _routerAgent = routerAgent;
         _conversationManager = conversationManager;
@@ -31,14 +36,11 @@ public class AgentService
         _conversationSummaryService = conversationSummaryService;
         _semanticMemoryService = semanticMemoryService;
         _memoryExtractionService = memoryExtractionService;
+        _guardrailPipeline = guardrailPipeline;
     }
 
     public async Task<string> AskAsync(string question, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(question))
-        {
-            return "Please enter a valid question.";
-        }
 
         const string agentName = "AgentService";
 
@@ -49,6 +51,19 @@ public class AgentService
 
         try
         {
+            var guardrailResult = await _guardrailPipeline.ExecuteAsync(
+                                            new GuardrailContext
+                                            {
+                                                Stage = GuardrailStage.Input,
+                                                Content = question
+                                            },
+                                            cancellationToken
+                                        );
+
+            if (guardrailResult.Decision != GuardrailDecision.Allow)
+            {
+                return guardrailResult.UserMessage ?? "Your request couldn't be processed.";
+            }
 
             var conversation = _conversationManager.Current;
 
@@ -123,11 +138,6 @@ public class AgentService
 
     public async IAsyncEnumerable<string> AskStreamingAsync(string question, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(question))
-        {
-             yield return "Please enter a valid question.";
-             yield break;
-        }
 
         const string agentName = "AgentService";
 
@@ -138,6 +148,20 @@ public class AgentService
 
         try
         {
+            var guardrailResult = await _guardrailPipeline.ExecuteAsync(
+                                                new GuardrailContext
+                                                {
+                                                    Stage = GuardrailStage.Input,
+                                                    Content = question
+                                                },
+                                                cancellationToken
+                                          );
+
+            if (guardrailResult.Decision != GuardrailDecision.Allow)
+            {
+                yield return guardrailResult.UserMessage ?? "Your request couldn't be processed.";
+                yield break;
+            }
 
             var conversation = _conversationManager.Current;
 

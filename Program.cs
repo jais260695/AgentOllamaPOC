@@ -3,6 +3,10 @@ using AgentOllamaPOC.Agents;
 using AgentOllamaPOC.Data;
 using AgentOllamaPOC.Data.Repositories;
 using AgentOllamaPOC.Execution;
+using AgentOllamaPOC.Guardrails.Abstractions;
+using AgentOllamaPOC.Guardrails.Configuration;
+using AgentOllamaPOC.Guardrails.Input;
+using AgentOllamaPOC.Guardrails.Pipeline;
 using AgentOllamaPOC.Infrastructure;
 using AgentOllamaPOC.Mcp;
 using AgentOllamaPOC.Memory;
@@ -14,6 +18,7 @@ using AgentOllamaPOC.Tools;
 using AgentOllamaPOC.Workers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -75,6 +80,14 @@ builder.Logging.AddOpenTelemetry(logging =>
 
 builder.Services.Configure<LlmProviderOptions>(
     builder.Configuration.GetSection(LlmProviderOptions.SectionName));
+
+builder.Services.Configure<GuardrailOptions>(
+    builder.Configuration.GetSection(GuardrailOptions.SectionName));
+
+//Guardrails
+
+builder.Services.AddSingleton<IGuardrail, InputLengthGuardrail>();
+builder.Services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
 //Memory Servcies
 
@@ -222,10 +235,7 @@ try
 
         var input = Console.ReadLine();
 
-        if (string.IsNullOrWhiteSpace(input))
-            continue;
-
-        if (input.Equals("exit", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(input) && input.Equals("exit", StringComparison.OrdinalIgnoreCase))
             break;
 
         //var answer = await chat.AskAsync(input!, cts.Token);
