@@ -8,7 +8,10 @@ public sealed record GuardrailResult
     public string? UserMessage { get; init; }
 
     public static GuardrailResult Allow() =>
-        new() { Decision = GuardrailDecision.Allow };
+        new() 
+        { 
+            Decision = GuardrailDecision.Allow 
+        };
 
     public static GuardrailResult Block(
         string reason,
@@ -16,6 +19,16 @@ public sealed record GuardrailResult
         new()
         {
             Decision = GuardrailDecision.Block,
+            Reason = reason,
+            UserMessage = userMessage
+        };
+
+    public static GuardrailResult RequireApproval(
+        string reason,
+        string userMessage) =>
+        new()
+        {
+            Decision = GuardrailDecision.RequireApproval,
             Reason = reason,
             UserMessage = userMessage
         };

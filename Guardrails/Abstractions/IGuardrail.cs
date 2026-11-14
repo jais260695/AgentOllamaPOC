@@ -7,6 +7,8 @@ public interface IGuardrail
 
     GuardrailStage Stage { get; }
 
+    int Order { get; }
+
     Task<GuardrailResult> EvaluateAsync(
         GuardrailContext context,
         CancellationToken cancellationToken = default);
