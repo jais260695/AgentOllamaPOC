@@ -87,6 +87,8 @@ builder.Services.Configure<GuardrailOptions>(
 //Guardrails
 
 builder.Services.AddSingleton<IGuardrail, InputLengthGuardrail>();
+builder.Services.AddSingleton<IGuardrail, PromptInjectionGuardrail>();
+
 builder.Services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
 //Memory Servcies
