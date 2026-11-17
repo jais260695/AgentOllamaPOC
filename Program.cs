@@ -7,6 +7,7 @@ using AgentOllamaPOC.Guardrails.Abstractions;
 using AgentOllamaPOC.Guardrails.Configuration;
 using AgentOllamaPOC.Guardrails.Input;
 using AgentOllamaPOC.Guardrails.Pipeline;
+using AgentOllamaPOC.Guardrails.Tokens;
 using AgentOllamaPOC.Infrastructure;
 using AgentOllamaPOC.Mcp;
 using AgentOllamaPOC.Memory;
@@ -90,6 +91,8 @@ builder.Services.AddSingleton<IGuardrail, InputLengthGuardrail>();
 builder.Services.AddSingleton<IGuardrail, PromptInjectionGuardrail>();
 
 builder.Services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
+
+builder.Services.AddSingleton<ITokenCounter, GenericTokenCounter>();
 
 //Memory Servcies
 

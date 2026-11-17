@@ -1,6 +1,6 @@
-﻿using AgentOllamaPOC.Infrastructure;
+﻿using AgentOllamaPOC.Guardrails.Tokens;
+using AgentOllamaPOC.Infrastructure;
 using AgentOllamaPOC.Models;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,6 +17,8 @@ public sealed class AgentExecutor : IAgentExecutor
     private readonly PromptBuilder _promptBuilder;
     private readonly ILogger<AgentExecutor> _logger;
 
+    private readonly ITokenCounter _tokenCounter;
+
     private readonly string _providerName;
     private readonly string _modelName;
 
@@ -24,11 +26,13 @@ public sealed class AgentExecutor : IAgentExecutor
         IChatClient chatClient,
         PromptBuilder promptBuilder,
         ILogger<AgentExecutor> logger,
-        IOptions<LlmProviderOptions> llmOptions)
+        IOptions<LlmProviderOptions> llmOptions,
+        ITokenCounter tokenCounter)
     {
         _chatClient = chatClient;
         _promptBuilder = promptBuilder;
         _logger = logger;
+        _tokenCounter = tokenCounter;
 
         var options = llmOptions.Value;
 
@@ -147,10 +151,10 @@ public sealed class AgentExecutor : IAgentExecutor
                     {
                         case FunctionCallContent functionCall:
                             _logger.LogInformation(
-        "Function call: {FunctionName}, CallId: {CallId}, RawRepresentation: {HasRawRepresentation}",
-        functionCall.Name,
-        functionCall.CallId,
-        functionCall.RawRepresentation is not null);
+                                "Function call: {FunctionName}, CallId: {CallId}, RawRepresentation: {HasRawRepresentation}",
+                                functionCall.Name,
+                                functionCall.CallId,
+                                functionCall.RawRepresentation is not null);
                             break;
 
                         case FunctionResultContent functionResult:

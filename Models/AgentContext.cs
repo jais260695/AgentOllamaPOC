@@ -1,4 +1,6 @@
-﻿namespace AgentOllamaPOC.Models;
+﻿using AgentOllamaPOC.Guardrails.Tokens;
+
+namespace AgentOllamaPOC.Models;
 
 public sealed record AgentContext
 {
@@ -13,4 +15,6 @@ public sealed record AgentContext
     public bool IncludeConversationSummary { get; init; } = true;
 
     public bool IncludeSemanticMemory { get; init; } = true;
+
+    public TokenBudget? Budget { get; init; }
 }
